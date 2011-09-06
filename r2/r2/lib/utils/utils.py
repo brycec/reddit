@@ -206,6 +206,12 @@ class Results():
         else:
             raise StopIteration
 
+def strip_www(domain):
+    if domain.count('.') >= 2 and domain.startswith("www."):
+        return domain[4:]
+    else:
+        return domain
+
 r_base_url = re.compile("(?i)(?:.+?://)?(?:www[\d]*\.)?([^#]*[^#/])/?")
 def base_url(url):
     res = r_base_url.findall(url)
@@ -233,7 +239,7 @@ def path_component(s):
 def get_title(url):
     """Fetches the contents of url and extracts (and utf-8 encodes)
        the contents of <title>"""
-    if not url or not url.startswith('http://'):
+    if not url or not (url.startswith('http://') or url.startswith('https://')):
         return None
 
     try:
@@ -275,11 +281,14 @@ def sanitize_url(url, require_scheme = False):
     if url.lower() == 'self':
         return url
 
-    u = urlparse(url)
-    # first pass: make sure a scheme has been specified
-    if not require_scheme and not u.scheme:
-        url = 'http://' + url
+    try:
         u = urlparse(url)
+        # first pass: make sure a scheme has been specified
+        if not require_scheme and not u.scheme:
+            url = 'http://' + url
+            u = urlparse(url)
+    except ValueError:
+        return
 
     if u.scheme and u.scheme in valid_schemes:
         # if there is a scheme and no hostname, it is a bad url.
@@ -608,9 +617,7 @@ class UrlParser(object):
         u = cls(url)
 
         # strip off any www and lowercase the hostname:
-        netloc = u.netloc.lower()
-        if len(netloc.split('.')) > 2 and netloc.startswith("www."):
-            netloc = netloc[4:]
+        netloc = strip_www(u.netloc.lower())
 
         # http://code.google.com/web/ajaxcrawling/docs/specification.html
         fragment = u.fragment if u.fragment.startswith("!") else ""

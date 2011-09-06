@@ -221,8 +221,8 @@ class Reddit(Templated):
             if srs:
                 ps.append(SideContentBox(_('these reddits'),[SubscriptionBox(srs=srs)]))
 
-        if not isinstance(c.site, FakeSubreddit) and not c.cname:
-            #don't show the subreddit info bar on cnames
+        # don't show the subreddit info bar on cnames unless the option is set
+        if not isinstance(c.site, FakeSubreddit) and (not c.cname or c.site.show_cname_sidebar):
             ps.append(SubredditInfoBar())
             if (c.user.pref_show_adbox or not c.user.gold) and not g.disable_ads:
                 ps.append(Ads())
@@ -824,6 +824,9 @@ class LinkInfoPage(Reddit):
         if hasattr(self.link, "shortlink"):
             self.shortlink = self.link.shortlink
 
+        if hasattr(self.link, "dart_keyword"):
+            c.custom_dart_keyword = self.link.dart_keyword
+
         # if we're already looking at the 'duplicates' page, we can
         # avoid doing this lookup twice
         if duplicates is None:
@@ -1189,6 +1192,8 @@ class ProfileBar(Templated):
                     else:
                         self.gold_remaining = timeuntil(self.gold_expiration,
                                         precision=60 * 60 * 24 * 30) # months
+                if hasattr(user, "gold_subscr_id"):
+                    self.gold_subscr_id = user.gold_subscr_id
             if user._id != c.user._id:
                 self.goldlink = "/gold?goldtype=gift&recipient=" + user.name
                 self.giftmsg = _("buy %(user)s a month of reddit gold" %
@@ -2578,7 +2583,7 @@ class ModList(UserList):
 
     @property
     def table_title(self):
-        return _("moderators to %(reddit)s") % dict(reddit = c.site.name)
+        return _("moderators of %(reddit)s") % dict(reddit = c.site.name)
 
     def editable_fn(self, user):
         if not c.user_is_loggedin:
@@ -3468,12 +3473,13 @@ class RawString(Templated):
        return unsafe(self.s)
 
 class Dart_Ad(CachedTemplate):
-    def __init__(self, dartsite, tag):
+    def __init__(self, dartsite, tag, custom_keyword=None):
         tag = tag or "homepage"
+        keyword = custom_keyword or tag
         tracker_url = AdframeInfo.gen_url(fullname = "dart_" + tag,
                                           ip = request.ip)
         Templated.__init__(self, tag = tag, dartsite = dartsite,
-                           tracker_url = tracker_url)
+                           tracker_url = tracker_url, keyword=keyword)
 
     def render(self, *a, **kw):
         res = CachedTemplate.render(self, *a, **kw)
@@ -3492,22 +3498,24 @@ class HouseAd(CachedTemplate):
 class ComScore(CachedTemplate):
     pass
 
-def render_ad(reddit_name=None, codename=None):
+def render_ad(reddit_name=None, codename=None, keyword=None):
     if not reddit_name:
         reddit_name = g.default_sr
         if g.frontpage_dart:
-            return Dart_Ad("reddit.dart", reddit_name).render()
+            return Dart_Ad("reddit.dart", reddit_name, keyword).render()
 
     try:
         sr = Subreddit._by_name(reddit_name)
     except NotFound:
-        return Dart_Ad("reddit.dart", g.default_sr).render()
+        return Dart_Ad("reddit.dart", g.default_sr, keyword).render()
 
     if sr.over_18:
         dartsite = "reddit.dart.nsfw"
     else:
         dartsite = "reddit.dart"
 
+    if keyword:
+        return Dart_Ad(dartsite, reddit_name, keyword).render()
 
     if codename:
         if codename == "DART":

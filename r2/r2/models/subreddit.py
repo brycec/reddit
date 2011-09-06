@@ -62,6 +62,7 @@ class Subreddit(Thing, Printable):
                      reported = 0,
                      valid_votes = 0,
                      show_media = False,
+                     show_cname_sidebar = False,
                      css_on_cname = True,
                      domain = None,
                      over_18 = False,
@@ -535,7 +536,7 @@ class Subreddit(Thing, Printable):
         sorted/rearranged version of user_subreddits()."""
         srs = cls.user_subreddits(user, ids = False)
         names = [s.name for s in srs if s.can_submit(user)]
-        names.sort()
+        names.sort(key=str.lower)
 
         #add the current site to the top (default_sr)
         if g.default_sr in names:
@@ -773,7 +774,8 @@ class AllSR(FakeSubreddit):
                         read_cache = True,
                         write_cache = True,
                         cache_time = 60,
-                        data = True)
+                        data = True,
+                        filter_primary_sort_only=True)
         if time != 'all':
             q._filter(queries.db_times[time])
         return q
@@ -870,23 +872,28 @@ class MultiReddit(_DefaultSR):
         self.real_path = path
         self.sr_ids = sr_ids
 
-    def spammy(self):
         srs = Subreddit._byID(self.sr_ids, return_dict=False)
-        return any(sr._spam for sr in srs)
+        self.banned_sr_ids = []
+        self.kept_sr_ids = []
+        for sr in srs:
+            if sr._spam:
+                self.banned_sr_ids.append(sr._id)
+            else:
+                self.kept_sr_ids.append(sr._id)
 
     @property
     def path(self):
         return '/r/' + self.real_path
 
     def get_links(self, sort, time):
-        return self.get_links_sr_ids(self.sr_ids, sort, time)
+        return self.get_links_sr_ids(self.kept_sr_ids, sort, time)
 
     def rising_srs(self):
-        return self.sr_ids
+        return self.kept_sr_ids
 
     def get_all_comments(self):
         from r2.lib.db.queries import get_sr_comments, merge_results
-        srs = Subreddit._byID(self.sr_ids, return_dict=False)
+        srs = Subreddit._byID(self.kept_sr_ids, return_dict=False)
         results = [get_sr_comments(sr) for sr in srs]
         return merge_results(*results)
 

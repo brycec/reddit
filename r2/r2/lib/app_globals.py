@@ -296,18 +296,6 @@ class Globals(object):
         else:
             self.static_names = {}
 
-        #set up the logging directory
-        log_path = self.log_path
-        process_iden = global_conf.get('scgi_port', 'default')
-        self.reddit_port = process_iden
-        if log_path:
-            if not os.path.exists(log_path):
-                os.makedirs(log_path)
-            for fname in os.listdir(log_path):
-                if fname.startswith(process_iden):
-                    full_name = os.path.join(log_path, fname)
-                    os.remove(full_name)
-
         #setup the logger
         self.log = logging.getLogger('reddit')
         self.log.addHandler(logging.StreamHandler())
@@ -324,14 +312,6 @@ class Globals(object):
         if self.media_domain == self.domain:
             print ("Warning: g.media_domain == g.domain. " +
                    "This may give untrusted content access to user cookies")
-
-        #read in our CSS so that it can become a default for subreddit
-        #stylesheets
-        stylesheet_path = os.path.join(self.paths.get('static_files'),
-                                       self.static_path.lstrip('/'),
-                                       self.stylesheet)
-        with open(stylesheet_path) as s:
-            self.default_stylesheet = s.read()
 
         self.profanities = None
         if self.profanity_wordlist and os.path.exists(self.profanity_wordlist):

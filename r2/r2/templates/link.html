@@ -53,7 +53,7 @@
        target="_top"
      %endif
      %if thing.mousedown_url:
-       onmousedown="this.href='${thing.mousedown_url}'"
+       onmousedown="save_href($(this));this.href='${thing.mousedown_url}'"
      %endif
      %if thing.link_child and getattr(thing, "media_override", False):
        onclick="return expando_child(this)"

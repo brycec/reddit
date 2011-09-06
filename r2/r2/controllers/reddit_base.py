@@ -253,34 +253,32 @@ def set_subreddit():
     elif sr_name == 'r':
         #reddits
         c.site = Sub
+    elif '+' in sr_name:
+        sr_names = sr_name.split('+')
+        srs = set(Subreddit._by_name(sr_names, stale=can_stale).values())
+        if All in srs:
+            c.site = All
+        elif Friends in srs:
+            c.site = Friends
+        else:
+            srs = [sr for sr in srs if not isinstance(sr, FakeSubreddit)]
+            if len(srs) == 0:
+                c.site = MultiReddit([], sr_name)
+            elif len(srs) == 1:
+                c.site = srs.pop()    
+            else:
+                sr_ids = [sr._id for sr in srs]
+                c.site = MultiReddit(sr_ids, sr_name)
     else:
         try:
-            if '+' in sr_name:
-                srs = set()
-                sr_names = sr_name.split('+')
-                real_path = sr_name
-                srs = Subreddit._by_name(sr_names, stale=can_stale).values()
-                if len(srs) != len(sr_names):
-                    abort(404)
-                elif any(isinstance(sr, FakeSubreddit)
-                         for sr in srs):
-                    if All in srs:
-                        c.site = All
-                    elif Friend in srs:
-                        c.site = Friend
-                    else:
-                        abort(400)
-                else:
-                    sr_ids = [sr._id for sr in srs]
-                    c.site = MultiReddit(sr_ids, real_path)
-            else:
-                c.site = Subreddit._by_name(sr_name, stale=can_stale)
+            c.site = Subreddit._by_name(sr_name, stale=can_stale)
         except NotFound:
             sr_name = chksrname(sr_name)
             if sr_name:
                 redirect_to("/reddits/search?q=%s" % sr_name)
-            elif not c.error_page:
+            elif not c.error_page and not request.path.startswith("/api/login/") :
                 abort(404)
+
     #if we didn't find a subreddit, check for a domain listing
     if not sr_name and isinstance(c.site, DefaultSR) and domain:
         c.site = DomainSR(domain)
@@ -758,21 +756,21 @@ class RedditController(MinimalController):
         elif c.site == RandomNSFW:
             c.site = Subreddit.random_reddit(over18 = True)
             redirect_to("/" + c.site.path.strip('/') + request.path)
+        
+        if not request.path.startswith("/api/login/"):
+            # check that the site is available:
+            if c.site.spammy() and not c.user_is_admin and not c.error_page:
+                abort(404, "not found")
 
+            # check if the user has access to this subreddit
+            if not c.site.can_view(c.user) and not c.error_page:
+                abort(403, "forbidden")
 
-        # check that the site is available:
-        if c.site.spammy() and not c.user_is_admin and not c.error_page:
-            abort(404, "not found")
-
-        # check if the user has access to this subreddit
-        if not c.site.can_view(c.user) and not c.error_page:
-            abort(403, "forbidden")
-
-        #check over 18
-        if (c.site.over_18 and not c.over18 and
-            request.path not in  ("/frame", "/over18")
-            and c.render_style == 'html'):
-            return self.intermediate_redirect("/over18")
+            #check over 18
+            if (c.site.over_18 and not c.over18 and
+                request.path not in ("/frame", "/over18")
+                and c.render_style == 'html'):
+                return self.intermediate_redirect("/over18")
 
         #check whether to allow custom styles
         c.allow_styles = self.allow_stylesheets

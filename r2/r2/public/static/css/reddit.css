@@ -1281,6 +1281,10 @@ textarea.gray { color: gray; }
 .fancy-toggle-button .add { 
     background-image: url(/static/bg-button-add.png);
 }
+.fancy-toggle-button .banned {
+    background-color: #666;
+    padding: 1px 1.9em;
+}
 
 
 
@@ -2076,6 +2080,9 @@ label + #moresearchinfo {
     background-color: #c7def7;
     width: 18px;
     float: left; 
+}
+.button .blog1 .headimgcell a {
+    display: inline-block;
 }
 .button .blog1 .score {
     float: center;
@@ -2878,6 +2885,11 @@ ul#image-preview-list .description pre {
     font-size: medium;
     color: blue;
     margin-right: 5px;
+}
+
+.subscription-box .title.banned {
+    color: dimgray;
+    text-decoration: line-through;
 }
 
 .subscription-box .column {

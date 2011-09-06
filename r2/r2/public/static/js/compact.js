@@ -92,12 +92,13 @@ $(function() {
         $(this).siblings(".save-button").toggle();
     });
     //Hide options when we collapse
-    $('.options_expando .collapse').live("click", function() {
+    $('.options_expando .collapse-button').live("click", function() {
         $(this).parent().removeClass('expanded');
+        $(this).parent().parent().parent().addClass("collapsed");
         $(this).parent().siblings('.options_link').removeClass("active");
     });
-    //Collapse when we click reply
-    $('.reply-button').live("click", function() {
+    //Collapse when we click reply, or edit
+    $('.reply-button, .edit-button').live("click", function() {
         $(this).parent().siblings('.options-link').click();
     });
     /* the iphone doesn't play nice with live() unless there is already a registered click function.  That's sad */
@@ -111,32 +112,13 @@ $(function() {
         }
     });
     //Comment options
-    $(".comment > .entry, .message > .entry").live("click", function(evt) {
-        var foo = (evt) ? $(evt.target) : null;
-        var thing = $(this).parent();
-        if (thing.hasClass("active")) {
-            thing.removeClass("active");
-            return false;
-        }
-        /* collapsed messages/comments should uncolapse */
-        else if (thing.hasClass("collapsed")) {
-            thing.removeClass("collapsed");
-            return false;
-        }
-        /* unread messages should be marked read */
-        else if (thing.hasClass("unread") || thing.hasClass("new")) {
-            read_thing(thing);
-            return false;
-        }
-        /* otherwise, fire a menu */
-        else if (foo &&
-                foo.filter("a").length == 0 &&
-                !foo.hasClass("arrow") &&
-                !foo.hasClass("button") &&
-                foo.filter("textarea").length == 0) {
-            thing.find(".options_link:first").click();
-            return false;
-        }
+    $(".comment.collapsed").live("click", function(e) {
+        $(this).removeClass("collapsed");
+    });
+    $(".message.unread").live("click", function(e) {
+        var thing = $(this)
+        read_thing(thing);
+        return false;
     });
     /*Finally*/
     $('a[href=#]').live('click', function() {
@@ -212,10 +194,3 @@ function fetch_more() {
         }
     });
 }
-
-function toggle_collapse(elem) {
-    $(elem).thing().addClass("collapsed").addClass("active")
-            .find('.thing_option_close:first').click();
-    return false;
-}
-
